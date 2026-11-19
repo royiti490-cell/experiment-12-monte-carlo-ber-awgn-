@@ -1,0 +1,671 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Real-Time Moving Waveform & Signal Webform</title>
+  <style>
+    :root {
+      --bg: #090d16;
+      --card-bg: rgba(18, 24, 38, 0.85);
+      --border: #1e293b;
+      --accent: #00f0ff;
+      --accent-alt: #7928ca;
+      --neon-green: #10b981;
+      --text: #f1f5f9;
+      --text-muted: #94a3b8;
+    }
+
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Oxygen, Ubuntu, Cantarell, monospace;
+    }
+
+    body {
+      background: radial-gradient(circle at 50% 10%, #151e33, var(--bg));
+      color: var(--text);
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      padding: 24px 16px;
+    }
+
+    .container {
+      width: 100%;
+      max-width: 1000px;
+      display: flex;
+      flex-direction: column;
+      gap: 20px;
+    }
+
+    header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      border-bottom: 1px solid var(--border);
+      padding-bottom: 16px;
+    }
+
+    h1 {
+      font-size: 1.5rem;
+      font-weight: 700;
+      background: linear-gradient(135deg, #00f0ff, #a855f7);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      letter-spacing: -0.5px;
+    }
+
+    .badge {
+      background: rgba(0, 240, 255, 0.1);
+      border: 1px solid rgba(0, 240, 255, 0.3);
+      color: var(--accent);
+      padding: 4px 10px;
+      border-radius: 999px;
+      font-size: 0.75rem;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+    }
+
+    /* Screen / Canvas Card */
+    .screen-card {
+      position: relative;
+      background: #05080f;
+      border: 1px solid #1e293b;
+      border-radius: 12px;
+      overflow: hidden;
+      box-shadow: 0 12px 36px rgba(0, 0, 0, 0.6), 0 0 20px rgba(0, 240, 255, 0.08);
+    }
+
+    canvas {
+      display: block;
+      width: 100%;
+      height: 320px;
+    }
+
+    .hud-overlay {
+      position: absolute;
+      top: 12px;
+      left: 14px;
+      display: flex;
+      gap: 16px;
+      font-size: 0.75rem;
+      font-family: monospace;
+      color: var(--accent);
+      pointer-events: none;
+      text-shadow: 0 0 8px rgba(0, 240, 255, 0.7);
+    }
+
+    /* Interactive Web Form Controls */
+    .webform-card {
+      background: var(--card-bg);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: 24px;
+      backdrop-filter: blur(16px);
+      box-shadow: 0 8px 24px rgba(0, 0, 0, 0.3);
+    }
+
+    .form-header {
+      font-size: 1rem;
+      font-weight: 600;
+      margin-bottom: 16px;
+      color: #e2e8f0;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .grid-controls {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+      gap: 20px;
+    }
+
+    .control-group {
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+    }
+
+    label {
+      font-size: 0.8rem;
+      font-weight: 600;
+      color: var(--text-muted);
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+      display: flex;
+      justify-content: space-between;
+    }
+
+    .val-display {
+      color: var(--accent);
+      font-family: monospace;
+    }
+
+    input[type="range"] {
+      -webkit-appearance: none;
+      width: 100%;
+      height: 6px;
+      background: #1e293b;
+      border-radius: 4px;
+      outline: none;
+      transition: background 0.2s;
+    }
+
+    input[type="range"]::-webkit-slider-thumb {
+      -webkit-appearance: none;
+      appearance: none;
+      width: 16px;
+      height: 16px;
+      border-radius: 50%;
+      background: var(--accent);
+      cursor: pointer;
+      box-shadow: 0 0 10px var(--accent);
+      transition: transform 0.1s;
+    }
+
+    input[type="range"]::-webkit-slider-thumb:hover {
+      transform: scale(1.2);
+    }
+
+    select {
+      background: #0f172a;
+      border: 1px solid var(--border);
+      color: var(--text);
+      padding: 10px 12px;
+      border-radius: 8px;
+      font-size: 0.9rem;
+      outline: none;
+      cursor: pointer;
+    }
+
+    select:focus {
+      border-color: var(--accent);
+    }
+
+    .btn-row {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 12px;
+      margin-top: 20px;
+      padding-top: 16px;
+      border-top: 1px solid var(--border);
+    }
+
+    button {
+      padding: 10px 20px;
+      font-size: 0.85rem;
+      font-weight: 600;
+      border-radius: 8px;
+      border: none;
+      cursor: pointer;
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      transition: all 0.2s ease;
+    }
+
+    .btn-primary {
+      background: linear-gradient(135deg, #00f0ff, #0099ff);
+      color: #05080f;
+      box-shadow: 0 0 15px rgba(0, 240, 255, 0.4);
+    }
+
+    .btn-primary:hover {
+      opacity: 0.9;
+      transform: translateY(-1px);
+    }
+
+    .btn-secondary {
+      background: #1e293b;
+      color: #f1f5f9;
+      border: 1px solid #334155;
+    }
+
+    .btn-secondary:hover {
+      background: #334155;
+    }
+
+    .btn-audio {
+      background: linear-gradient(135deg, #a855f7, #6366f1);
+      color: #fff;
+    }
+
+    .status-dot {
+      width: 8px;
+      height: 8px;
+      border-radius: 50%;
+      background: var(--neon-green);
+      display: inline-block;
+      box-shadow: 0 0 8px var(--neon-green);
+      animation: pulse 1.5s infinite;
+    }
+
+    @keyframes pulse {
+      0%, 100% { opacity: 1; transform: scale(1); }
+      50% { opacity: 0.5; transform: scale(0.85); }
+    }
+  </style>
+</head>
+<body>
+
+  <div class="container">
+    <header>
+      <div>
+        <h1>Oscilloscope & Moving Waveform Generator</h1>
+        <p style="color: var(--text-muted); font-size: 0.85rem; margin-top: 4px;">
+          Interactive signal webform with real-time continuous time-domain animation & audio synth
+        </p>
+      </div>
+      <div class="badge">
+        <span class="status-dot"></span> Live 60 FPS
+      </div>
+    </header>
+
+    <!-- Canvas Waveform Display -->
+    <div class="screen-card">
+      <div class="hud-overlay">
+        <div>CH 1: <span id="hud-type">SINE</span></div>
+        <div>FREQ: <span id="hud-freq">4.0 Hz</span></div>
+        <div>V_PP: <span id="hud-vpp">2.00 V</span></div>
+        <div>NOISE: <span id="hud-noise">0.05</span></div>
+      </div>
+      <canvas id="waveformCanvas"></canvas>
+    </div>
+
+    <!-- Webform Controls -->
+    <div class="webform-card">
+      <div class="form-header">
+        <svg width="18" height="18" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6V4m0 2a2 2 0 100 4m0-4a2 2 0 110 4m-6 8a2 2 0 100-4m0 4a2 2 0 110-4m0 4v2m0-6V4m6 6v10m6-2a2 2 0 100-4m0 4a2 2 0 110-4m0 4v2m0-6V4"/>
+        </svg>
+        Waveform & Synthesis Webform Controls
+      </div>
+
+      <div class="grid-controls">
+        <!-- Waveform Preset / Type -->
+        <div class="control-group">
+          <label>Waveform Type</label>
+          <select id="waveType">
+            <option value="sine" selected>Pure Sine Wave</option>
+            <option value="am">AM Modulated Carrier</option>
+            <option value="fm">FM Modulated Carrier</option>
+            <option value="qam">QPSK / 16-QAM Modulated Stream</option>
+            <option value="square">Square Wave</option>
+            <option value="sawtooth">Sawtooth Wave</option>
+            <option value="triangle">Triangle Wave</option>
+            <option value="ecg">Bio/Heartbeat Pulse</option>
+          </select>
+        </div>
+
+        <!-- Frequency -->
+        <div class="control-group">
+          <label>Frequency (f) <span class="val-display" id="freqVal">4.0 Hz</span></label>
+          <input type="range" id="freq" min="0.5" max="20" step="0.1" value="4.0">
+        </div>
+
+        <!-- Amplitude -->
+        <div class="control-group">
+          <label>Amplitude (A) <span class="val-display" id="ampVal">1.00</span></label>
+          <input type="range" id="amp" min="0.1" max="2.0" step="0.05" value="1.0">
+        </div>
+
+        <!-- Wave Scroll Speed -->
+        <div class="control-group">
+          <label>Wave Scroll Speed <span class="val-display" id="speedVal">1.50x</span></label>
+          <input type="range" id="speed" min="0.1" max="4.0" step="0.1" value="1.5">
+        </div>
+
+        <!-- AWGN Noise Variance -->
+        <div class="control-group">
+          <label>AWGN Noise Level (σ) <span class="val-display" id="noiseVal">0.05</span></label>
+          <input type="range" id="noise" min="0.0" max="0.5" step="0.01" value="0.05">
+        </div>
+
+        <!-- Color Theme -->
+        <div class="control-group">
+          <label>Glow Phosphor Color</label>
+          <select id="colorTheme">
+            <option value="#00f0ff" selected>Cyber Cyan (#00f0ff)</option>
+            <option value="#10b981">Phosphor Green (#10b981)</option>
+            <option value="#f43f5e">Neon Magenta (#f43f5e)</option>
+            <option value="#eab308">Amber CRT (#eab308)</option>
+          </select>
+        </div>
+      </div>
+
+      <!-- Action Buttons -->
+      <div class="btn-row">
+        <button class="btn-primary" id="btnPlayPause">
+          <span id="playIcon">⏸</span> <span id="playText">Pause Wave</span>
+        </button>
+
+        <button class="btn-audio" id="btnAudioToggle">
+          <span>🔊</span> <span id="audioText">Play Audio Tone</span>
+        </button>
+
+        <button class="btn-secondary" id="btnInvert">
+          <span>⚡</span> Invert Phase
+        </button>
+
+        <button class="btn-secondary" id="btnReset">
+          <span>↺</span> Reset Defaults
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    const canvas = document.getElementById('waveformCanvas');
+    const ctx = canvas.getContext('2d');
+
+    // Controls
+    const waveTypeSelect = document.getElementById('waveType');
+    const freqInput = document.getElementById('freq');
+    const ampInput = document.getElementById('amp');
+    const speedInput = document.getElementById('speed');
+    const noiseInput = document.getElementById('noise');
+    const colorSelect = document.getElementById('colorTheme');
+
+    // Displays
+    const freqVal = document.getElementById('freqVal');
+    const ampVal = document.getElementById('ampVal');
+    const speedVal = document.getElementById('speedVal');
+    const noiseVal = document.getElementById('noiseVal');
+
+    // HUD
+    const hudType = document.getElementById('hud-type');
+    const hudFreq = document.getElementById('hud-freq');
+    const hudVpp = document.getElementById('hud-vpp');
+    const hudNoise = document.getElementById('hud-noise');
+
+    // Buttons
+    const btnPlayPause = document.getElementById('btnPlayPause');
+    const btnAudioToggle = document.getElementById('btnAudioToggle');
+    const btnInvert = document.getElementById('btnInvert');
+    const btnReset = document.getElementById('btnReset');
+
+    let isPlaying = true;
+    let phase = 0;
+    let phaseInverted = false;
+    let traceColor = '#00f0ff';
+
+    // Resize canvas dynamically
+    function resizeCanvas() {
+      const rect = canvas.getBoundingClientRect();
+      canvas.width = rect.width * window.devicePixelRatio;
+      canvas.height = rect.height * window.devicePixelRatio;
+    }
+    window.addEventListener('resize', resizeCanvas);
+    resizeCanvas();
+
+    // Web Audio Synthesizer
+    let audioCtx = null;
+    let oscillator = null;
+    let gainNode = null;
+    let isAudioPlaying = false;
+
+    function initAudio() {
+      if (!audioCtx) {
+        audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+        gainNode = audioCtx.createGain();
+        gainNode.gain.value = 0.08; // Safe listening volume
+        gainNode.connect(audioCtx.destination);
+      }
+    }
+
+    function toggleAudio() {
+      initAudio();
+      if (audioCtx.state === 'suspended') {
+        audioCtx.resume();
+      }
+
+      if (!isAudioPlaying) {
+        oscillator = audioCtx.createOscillator();
+        const baseFreq = parseFloat(freqInput.value) * 55; // scale to audible pitch (e.g. 220Hz - 880Hz)
+        oscillator.frequency.setValueAtTime(baseFreq, audioCtx.currentTime);
+
+        const type = waveTypeSelect.value;
+        if (type === 'square') oscillator.type = 'square';
+        else if (type === 'sawtooth') oscillator.type = 'sawtooth';
+        else if (type === 'triangle') oscillator.type = 'triangle';
+        else oscillator.type = 'sine';
+
+        oscillator.connect(gainNode);
+        oscillator.start();
+        isAudioPlaying = true;
+        document.getElementById('audioText').textContent = 'Stop Audio Tone';
+        btnAudioToggle.style.background = '#e11d48';
+      } else {
+        if (oscillator) {
+          oscillator.stop();
+          oscillator.disconnect();
+          oscillator = null;
+        }
+        isAudioPlaying = false;
+        document.getElementById('audioText').textContent = 'Play Audio Tone';
+        btnAudioToggle.style.background = 'linear-gradient(135deg, #a855f7, #6366f1)';
+      }
+    }
+
+    btnAudioToggle.addEventListener('click', toggleAudio);
+
+    // Event updates
+    freqInput.addEventListener('input', (e) => {
+      const val = parseFloat(e.target.value).toFixed(1);
+      freqVal.textContent = `${val} Hz`;
+      hudFreq.textContent = `${val} Hz`;
+      if (oscillator && isAudioPlaying) {
+        oscillator.frequency.setValueAtTime(parseFloat(val) * 55, audioCtx.currentTime);
+      }
+    });
+
+    ampInput.addEventListener('input', (e) => {
+      const val = parseFloat(e.target.value).toFixed(2);
+      ampVal.textContent = val;
+      hudVpp.textContent = (val * 2).toFixed(2) + ' V';
+    });
+
+    speedInput.addEventListener('input', (e) => {
+      speedVal.textContent = parseFloat(e.target.value).toFixed(2) + 'x';
+    });
+
+    noiseInput.addEventListener('input', (e) => {
+      const val = parseFloat(e.target.value).toFixed(2);
+      noiseVal.textContent = val;
+      hudNoise.textContent = val;
+    });
+
+    waveTypeSelect.addEventListener('change', (e) => {
+      hudType.textContent = e.target.value.toUpperCase();
+      if (isAudioPlaying) {
+        toggleAudio();
+        toggleAudio();
+      }
+    });
+
+    colorSelect.addEventListener('change', (e) => {
+      traceColor = e.target.value;
+    });
+
+    btnPlayPause.addEventListener('click', () => {
+      isPlaying = !isPlaying;
+      document.getElementById('playText').textContent = isPlaying ? 'Pause Wave' : 'Resume Wave';
+      document.getElementById('playIcon').textContent = isPlaying ? '⏸' : '▶';
+    });
+
+    btnInvert.addEventListener('click', () => {
+      phaseInverted = !phaseInverted;
+    });
+
+    btnReset.addEventListener('click', () => {
+      waveTypeSelect.value = 'sine';
+      freqInput.value = 4.0;
+      ampInput.value = 1.0;
+      speedInput.value = 1.5;
+      noiseInput.value = 0.05;
+      colorSelect.value = '#00f0ff';
+      traceColor = '#00f0ff';
+      phaseInverted = false;
+
+      freqVal.textContent = '4.0 Hz';
+      ampVal.textContent = '1.00';
+      speedVal.textContent = '1.50x';
+      noiseVal.textContent = '0.05';
+
+      hudType.textContent = 'SINE';
+      hudFreq.textContent = '4.0 Hz';
+      hudVpp.textContent = '2.00 V';
+      hudNoise.textContent = '0.05';
+    });
+
+    // Pseudo-random Gaussian AWGN (Box-Muller)
+    function randomGaussian() {
+      let u = 0, v = 0;
+      while (u === 0) u = Math.random();
+      while (v === 0) v = Math.random();
+      return Math.sqrt(-2.0 * Math.log(u)) * Math.cos(2.0 * Math.PI * v);
+    }
+
+    // Evaluate waveform function at position t
+    function sampleSignal(t, type, f, amp, noiseSigma) {
+      let val = 0;
+      const omega = 2 * Math.PI * f;
+
+      switch(type) {
+        case 'sine':
+          val = amp * Math.sin(omega * t);
+          break;
+        case 'square':
+          val = amp * Math.sign(Math.sin(omega * t));
+          break;
+        case 'sawtooth':
+          val = amp * (2 * ((t * f) % 1) - 1);
+          break;
+        case 'triangle':
+          val = amp * (2 * Math.abs(2 * ((t * f) % 1) - 1) - 1);
+          break;
+        case 'am': {
+          // Amplitude Modulation: Carrier = sin(omega*t), Modulator = 0.5 + 0.5*sin(omega/5 * t)
+          const m = 0.5 + 0.5 * Math.sin((omega / 4) * t);
+          val = amp * m * Math.sin(omega * t);
+          break;
+        }
+        case 'fm': {
+          // Frequency Modulation: sin(omega*t + beta*sin(omega/6 * t))
+          const beta = 3.0;
+          val = amp * Math.sin(omega * t + beta * Math.sin((omega / 5) * t));
+          break;
+        }
+        case 'qam': {
+          // Modulated discrete pulse sequence (symbol transitions)
+          const symIndex = Math.floor(t * f * 2);
+          const i_sym = ((symIndex * 13) % 4) - 1.5;
+          const q_sym = (((symIndex + 2) * 7) % 4) - 1.5;
+          val = amp * 0.7 * (i_sym * Math.cos(omega * t) - q_sym * Math.sin(omega * t));
+          break;
+        }
+        case 'ecg': {
+          // Synthetic periodic pulse wave
+          const cycle = (t * f) % 1.0;
+          if (cycle < 0.1) val = amp * Math.sin(cycle / 0.1 * Math.PI) * 0.2;
+          else if (cycle >= 0.18 && cycle < 0.22) val = amp * 1.6 * Math.sin((cycle - 0.18) / 0.04 * Math.PI);
+          else if (cycle >= 0.35 && cycle < 0.55) val = amp * 0.35 * Math.sin((cycle - 0.35) / 0.20 * Math.PI);
+          else val = 0;
+          break;
+        }
+        default:
+          val = amp * Math.sin(omega * t);
+      }
+
+      if (noiseSigma > 0) {
+        val += noiseSigma * randomGaussian();
+      }
+
+      return phaseInverted ? -val : val;
+    }
+
+    // Grid rendering
+    function drawGrid(w, h) {
+      ctx.strokeStyle = 'rgba(30, 41, 59, 0.45)';
+      ctx.lineWidth = 1;
+      const step = 40 * (w / 800);
+
+      ctx.beginPath();
+      for (let x = 0; x < w; x += step) {
+        ctx.moveTo(x, 0);
+        ctx.lineTo(x, h);
+      }
+      for (let y = 0; y < h; y += step) {
+        ctx.moveTo(0, y);
+        ctx.lineTo(w, y);
+      }
+      ctx.stroke();
+
+      // Center crosshairs
+      ctx.strokeStyle = 'rgba(0, 240, 255, 0.25)';
+      ctx.lineWidth = 1.5;
+      ctx.setLineDash([4, 4]);
+      ctx.beginPath();
+      ctx.moveTo(0, h / 2);
+      ctx.lineTo(w, h / 2);
+      ctx.stroke();
+      ctx.setLineDash([]);
+    }
+
+    // Main animation loop
+    function animate() {
+      const w = canvas.width;
+      const h = canvas.height;
+      const midY = h / 2;
+
+      // Dark trail clearing for CRT phosphor effect
+      ctx.fillStyle = 'rgba(5, 8, 15, 0.3)';
+      ctx.fillRect(0, 0, w, h);
+
+      drawGrid(w, h);
+
+      const f = parseFloat(freqInput.value);
+      const amp = parseFloat(ampInput.value);
+      const speed = parseFloat(speedInput.value);
+      const noise = parseFloat(noiseInput.value);
+      const type = waveTypeSelect.value;
+
+      const scaleY = (h * 0.38) / 2.0;
+      const timeWindow = 2.0; // span 2 seconds across screen
+
+      ctx.save();
+      ctx.lineWidth = 2.5 * (w / 800);
+      ctx.strokeStyle = traceColor;
+      ctx.shadowColor = traceColor;
+      ctx.shadowBlur = 12;
+
+      ctx.beginPath();
+      const points = 600;
+      for (let i = 0; i < points; i++) {
+        const x = (i / (points - 1)) * w;
+        const t = (i / points) * timeWindow + phase;
+        const sample = sampleSignal(t, type, f, amp, noise);
+        const y = midY - sample * scaleY;
+
+        if (i === 0) ctx.moveTo(x, y);
+        else ctx.lineTo(x, y);
+      }
+      ctx.stroke();
+      ctx.restore();
+
+      if (isPlaying) {
+        phase += 0.008 * speed;
+      }
+
+      requestAnimationFrame(animate);
+    }
+
+    requestAnimationFrame(animate);
+  </script>
+</body>
+</html>
